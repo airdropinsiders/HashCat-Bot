@@ -40,7 +40,7 @@ class Base:
     def create_banner(self, game_name: str):
         # Create banner with game name
         banner = f"""
-        {self.blue}Smart Airdrop {self.white}{game_name} Auto Claimer
+        {self.blue}AIRDROP INSIDERS {self.white}{game_name} Auto Claimer
         t.me/airdropinsiderID
         
         """
