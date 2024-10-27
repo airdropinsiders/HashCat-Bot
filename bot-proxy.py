@@ -137,7 +137,7 @@ class HashCats:
 
             print()
             wait_time = 30 * 60
-            base.log(f"{base.yellow}Wait for {int(wait_time/30)} minutes!")
+            base.log(f"{base.yellow}Wait for {int(wait_time/60)} minutes!")
             time.sleep(wait_time)
 
 
