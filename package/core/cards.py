@@ -33,7 +33,7 @@ def buy_card(token, card_id, category, proxies=None):
         return None
 
 
-def get_highest_ratio_item(token, proxies=None):
+def get_highest_ratio_item(token, skip_list, proxies=None):
     inventory_cards = cards(token=token, proxies=proxies)
     current_balance = balance(token=token, proxies=proxies)
     current_cards = my_cards(token=token, proxies=proxies)
@@ -48,17 +48,26 @@ def get_highest_ratio_item(token, proxies=None):
             for category in inventory_cards.values():
                 for item in category:
                     if item["id"] == card_id:
-                        item["price"] = item["prices"][card_level]
                         try:
-                            item["profit"] = (
-                                item["profits"][card_level]
-                                - item["profits"][card_level - 1]
-                            )
+                            item["price"] = item["prices"][card_level]
                         except:
-                            item["profit"] = (
-                                item["stackingProfits"][card_level]
-                                - item["stackingProfits"][card_level - 1]
-                            )
+                            item["price"] = item["prices"][-1]
+                        try:
+                            try:
+                                item["profit"] = (
+                                    item["profits"][card_level]
+                                    - item["profits"][card_level - 1]
+                                )
+                            except:
+                                item["profit"] = item["profit"][-1]
+                        except:
+                            try:
+                                item["profit"] = (
+                                    item["stackingProfits"][card_level]
+                                    - item["stackingProfits"][card_level - 1]
+                                )
+                            except:
+                                item["profit"] = item["stackingProfits"][-1]
 
     update_inventory_prices_and_profits(
         current_cards=current_cards, inventory_cards=inventory_cards
@@ -66,6 +75,9 @@ def get_highest_ratio_item(token, proxies=None):
 
     # Function to calculate price/profit ratio
     def profit_price_ratio(item):
+        # print(item)
+        if item["price"] == "0":
+            item["price"] = "1"
         return float(item["profit"]) / float(item["price"])
 
     # Function to check if requirements are met
@@ -92,6 +104,7 @@ def get_highest_ratio_item(token, proxies=None):
     # Variable to store the item with the highest ratio
     highest_ratio_item = None
     highest_ratio = 0
+    item_detail = None
 
     # Iterate through all categories
     for category in inventory_cards.keys():
@@ -101,7 +114,7 @@ def get_highest_ratio_item(token, proxies=None):
                 item["requirementsJson"], current_cards
             ):
                 ratio = profit_price_ratio(item)
-                if ratio > highest_ratio:
+                if ratio > highest_ratio and item["id"] not in skip_list:
                     highest_ratio = ratio
                     highest_ratio_item = {
                         "category": category,
@@ -111,13 +124,17 @@ def get_highest_ratio_item(token, proxies=None):
                         "profit": float(item["profit"]),
                         "ratio": ratio,
                     }
+                    item_detail = item
 
-    return highest_ratio_item
+    return highest_ratio_item, item_detail
 
 
 def process_buy_card(token, proxies=None):
+    skip_list = []
     while True:
-        highest_ratio_item = get_highest_ratio_item(token=token, proxies=proxies)
+        highest_ratio_item, item_detail = get_highest_ratio_item(
+            token=token, skip_list=skip_list, proxies=proxies
+        )
         if highest_ratio_item:
             card_id = highest_ratio_item["id"]
             category = highest_ratio_item["category"]
@@ -139,8 +156,10 @@ def process_buy_card(token, proxies=None):
                 )
             except:
                 error_message = start_buy_card["message"]
-                base.log(f"{base.white}Auto Buy Card: {base.red}{error_message}")
-                break
+                base.log(
+                    f"{base.white}Auto Buy Card: {base.red}Skip card {card_name} - Reason: {error_message}"
+                )
+                skip_list.append(card_id)
         else:
             base.log(
                 f"{base.white}Auto Buy Card: {base.red}Not enough coin to buy card"
